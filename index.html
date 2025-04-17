@@ -1,0 +1,270 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escala Brasileira de Atividade Anticolinérgica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Cabeçalho -->
+    <header class="bg-blue-600 text-white py-4">
+        <div class="container mx-auto px-4">
+            <h1 class="text-2xl font-bold">Escala Brasileira de Medicamentos com Atividade Anticolinérgica</h1>
+            <p class="mt-2">Consulte medicamentos e seus escores de atividade anticolinérgica para otimizar a prescrição.</p>
+        </div>
+    </header>
+
+    <!-- Seção Principal -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Campo de Pesquisa -->
+        <div class="mb-6">
+            <input type="text" id="searchInput" placeholder="Pesquisar por medicamento, ATC ou escore..." 
+                   class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <!-- Tabela de Medicamentos -->
+        <div class="overflow-x-auto">
+            <table id="medTable" class="w-full bg-white shadow-md rounded-lg">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="p-3 text-left cursor-pointer" onclick="sortTable(0)">Código ATC</th>
+                        <th class="p-3 text-left cursor-pointer" onclick="sortTable(1)">Medicamento</th>
+                        <th class="p-3 text-left cursor-pointer" onclick="sortTable(2)">Escore</th>
+                    </tr>
+                </thead>
+                <tbody id="medTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Informações Adicionais -->
+        <section class="mt-8">
+            <h2 class="text-xl font-semibold mb-4">Sobre a Escala</h2>
+            <p class="text-gray-700">
+                A Escala Brasileira de Atividade Anticolinérgica lista 125 medicamentos disponíveis no Brasil, classificados por escores de 1 a 3, indicando baixa, moderada ou alta atividade anticolinérgica. Desenvolvida com base em escalas internacionais e adaptada ao mercado nacional, é uma ferramenta prática para médicos avaliarem a carga anticolinérgica, reduzindo riscos de efeitos adversos, especialmente em idosos e pacientes com condições neurológicas.
+            </p>
+        </section>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bg-gray-800 text-white py-4">
+        <div class="container mx-auto px-4 text-center">
+            <p>Desenvolvido para facilitar a prática clínica. Dados baseados em Nery RT, Reis AM (2019).</p>
+            <p class="mt-2">Por Alan F. P. Araújo, estudante de Medicina do Centro Universitário de Patos de Minas - 2025</p>
+        </div>
+    </footer>
+
+    <script>
+        // Dados dos medicamentos (baseados na Tabela 2 do artigo)
+        const medications = [
+            { atc: "A03BA06", name: "Alcaloides totais de beladona", score: 3 },
+            { atc: "A03BB01", name: "Hiosciamina", score: 3 },
+            { atc: "A03CB04", name: "Hiosciamina", score: 3 },
+            { atc: "N06AA09", name: "Amitriptilina", score: 3 },
+            { atc: "N06AA02", name: "Imipramina", score: 3 },
+            { atc: "N06AA01", name: "Desipramina", score: 3 },
+            { atc: "R06AB02", name: "Dexbronfeniramina", score: 3 },
+            { atc: "R06AB02", name: "Dexclorfeniramina", score: 3 },
+            { atc: "R06AA02", name: "Difenidramina", score: 3 },
+            { atc: "R06AA02", name: "Doxilamina", score: 3 },
+            { atc: "N06AA12", name: "Doxepina", score: 3 },
+            { atc: "N05AH03", name: "Olanzapina", score: 3 },
+            { atc: "N05BA12", name: "Alprazolam", score: 3 },
+            { atc: "N05BA01", name: "Diazepam", score: 3 },
+            { atc: "N05BA06", name: "Lorazepam", score: 3 },
+            { atc: "N05BA08", name: "Midazolam", score: 3 },
+            { atc: "N05AA01", name: "Clorpromazina", score: 3 },
+            { atc: "N05AA04", name: "Levomepromazina", score: 3 },
+            { atc: "N05AD03", name: "Tioridazina", score: 3 },
+            { atc: "N05AB02", name: "Flufenazina", score: 3 },
+            { atc: "N05AB03", name: "Perfenazina", score: 3 },
+            { atc: "N05AB04", name: "Proclorperazina", score: 3 },
+            { atc: "N05AC02", name: "Tiotixeno", score: 3 },
+            { atc: "N05AD01", name: "Haloperidol", score: 3 },
+            { atc: "N05AH02", name: "Clozapina", score: 3 },
+            { atc: "N05AH04", name: "Quetiapina", score: 3 },
+            { atc: "N05AX08", name: "Risperidona", score: 3 },
+            { atc: "N05AX12", name: "Aripiprazol", score: 3 },
+            { atc: "N05BB01", name: "Hidroxizina", score: 3 },
+            { atc: "N05CF01", name: "Zolpidem", score: 3 },
+            { atc: "N05CF02", name: "Zopiclona", score: 3 },
+            { atc: "N05CH01", name: "Melatonina", score: 3 },
+            { atc: "N05CM05", name: "Temazepam", score: 3 },
+            { atc: "N06AA04", name: "Clomipramina", score: 3 },
+            { atc: "N06AA06", name: "Trimipramina", score: 3 },
+            { atc: "N06AA10", name: "Nortriptilina", score: 3 },
+            { atc: "N06AA12", name: "Trazodona", score: 3 },
+            { atc: "N06AB03", name: "Fluoxetina", score: 3 },
+            { atc: "N06AB04", name: "Citalopram", score: 3 },
+            { atc: "N06AB05", name: "Paroxetina", score: 3 },
+            { atc: "N06AB06", name: "Sertralina", score: 3 },
+            { atc: "N06AB10", name: "Escitalopram", score: 3 },
+            { atc: "N06AX11", name: "Mirtazapina", score: 3 },
+            { atc: "N06AX16", name: "Venlafaxina", score: 3 },
+            { atc: "N06AX21", name: "Duloxetina", score: 3 },
+            { atc: "N06BA04", name: "Metilfenidato", score: 3 },
+            { atc: "N06BA07", name: "Modafinila", score: 3 },
+            { atc: "N06BA09", name: "Atomoxetina", score: 3 },
+            { atc: "N06BX03", name: "Piracetam", score: 3 },
+            { atc: "N06DA02", name: "Donepezila", score: 3 },
+            { atc: "N06DA03", name: "Rivastigmina", score: 3 },
+            { atc: "N06DA04", name: "Galantamina", score: 3 },
+            { atc: "N07AA01", name: "Neostigmina", score: 3 },
+            { atc: "N07AA02", name: "Piridostigmina", score: 3 },
+            { atc: "N07BC01", name: "Buprenorfina", score: 3 },
+            { atc: "N07BC02", name: "Metadona", score: 3 },
+            { atc: "R03BB01", name: "Ipratrópio", score: 3 },
+            { atc: "R03BB04", name: "Tiotrópio", score: 3 },
+            { atc: "R03DA04", name: "Teofilina", score: 3 },
+            { atc: "R03DA05", name: "Aminofilina", score: 3 },
+            { atc: "R06AA02", name: "Difenidramina", score: 3 },
+            { atc: "R06AA04", name: "Clemastina", score: 3 },
+            { atc: "R06AB03", name: "Dimetindeno", score: 3 },
+            { atc: "R06AB04", name: "Clorfenamina", score: 3 },
+            { atc: "R06AD02", name: "Prometazina", score: 3 },
+            { atc: "R06AD03", name: "Tripolidina", score: 3 },
+            { atc: "R06AE05", name: "Meclizina", score: 3 },
+            { atc: "R06AE07", name: "Cetirizina", score: 3 },
+            { atc: "R06AX13", name: "Loratadina", score: 3 },
+            { atc: "R06AX17", name: "Buclizina", score: 3 },
+            { atc: "R06AX26", name: "Fexofenadina", score: 3 },
+            { atc: "A03AB17", name: "Tiotrópio", score: 2 },
+            { atc: "N05AX08", name: "Risperidona", score: 2 },
+            { atc: "N05BA01", name: "Clordiazepóxido", score: 2 },
+            { atc: "N05BA04", name: "Oxazepam", score: 2 },
+            { atc: "N05BB01", name: "Clorazepato", score: 2 },
+            { atc: "R06AX27", name: "Desloratadina", score: 1 },
+            { atc: "H02AB02", name: "Dexametasona", score: 1 },
+            { atc: "N02BA01", name: "Desogestrel", score: 1 },
+            { atc: "C01AA05", name: "Digoxina", score: 1 },
+            { atc: "C08DA01", name: "Diltiazem", score: 1 },
+            { atc: "B01AC06", name: "Dipiridamol", score: 1 },
+            { atc: "A03AA03", name: "Domperidona", score: 1 },
+            { atc: "N06BX02", name: "Entacapona", score: 1 },
+            { atc: "N06BD10", name: "Escitalopram", score: 1 },
+            { atc: "A02BA02", name: "Famotidina", score: 1 },
+            { atc: "N02AA02", name: "Fentanila", score: 1 },
+            { atc: "G04BD07", name: "Fesoterodina", score: 1 },
+            { atc: "N06AB03", name: "Fluoxetina", score: 1 },
+            { atc: "N06AB04", name: "Fluvoxamina", score: 1 },
+            { atc: "C03CA01", name: "Furosemida", score: 1 },
+            { atc: "J01GB03", name: "Gentamicina", score: 1 },
+            { atc: "N05AD01", name: "Haloperidol", score: 1 },
+            { atc: "C02AC02", name: "Hidralazina", score: 1 },
+            { atc: "H02AB09", name: "Hidrocortisona", score: 1 },
+            { atc: "G04CA03", name: "Hidroxizina", score: 1 },
+            { atc: "R06AE07", name: "Levocetirizina", score: 1 },
+            { atc: "N04BA02", name: "Levodopa + carbidopa", score: 1 },
+            { atc: "A07DA03", name: "Loperamida", score: 1 },
+            { atc: "R06AX13", name: "Loratadina", score: 1 },
+            { atc: "N05BA05", name: "Lorazepam", score: 1 },
+            { atc: "A07AB07", name: "Mebeverina", score: 1 },
+            { atc: "G04BD02", name: "Metadona", score: 1 },
+            { atc: "N05AX11", name: "Mirtazapina", score: 1 },
+            { atc: "N06AA01", name: "Nortriptilina", score: 1 },
+            { atc: "C03BA05", name: "Nifedipina", score: 1 },
+            { atc: "N06AB05", name: "Paroxetina", score: 1 },
+            { atc: "N06AB06", name: "Sertralina", score: 1 },
+            { atc: "N06AX16", name: "Venlafaxina", score: 1 },
+            { atc: "N06AX21", name: "Duloxetina", score: 1 },
+            { atc: "N06BA04", name: "Metilfenidato", score: 1 },
+            { atc: "N06BA07", name: "Modafinila", score: 1 },
+            { atc: "N06BA09", name: "Atomoxetina", score: 1 },
+            { atc: "N06BX03", name: "Piracetam", score: 1 },
+            { atc: "N06DA02", name: "Donepezila", score: 1 },
+            { atc: "N06DA03", name: "Rivastigmina", score: 1 },
+            { atc: "N06DA04", name: "Galantamina", score: 1 },
+            { atc: "N07AA01", name: "Neostigmina", score: 1 },
+            { atc: "N07AA02", name: "Piridostigmina", score: 1 },
+            { atc: "N07BC01", name: "Buprenorfina", score: 1 },
+            { atc: "N07BC02", name: "Metadona", score: 1 },
+            { atc: "R03BB01", name: "Ipratrópio", score: 1 },
+            { atc: "R03BB04", name: "Tiotrópio", score: 1 },
+            { atc: "R03DA04", name: "Teofilina", score: 1 },
+            { atc: "R03DA05", name: "Aminofilina", score: 1 },
+            { atc: "R06AA02", name: "Difenidramina", score: 1 },
+            { atc: "R06AA04", name: "Clemastina", score: 1 },
+            { atc: "R06AB03", name: "Dimetindeno", score: 1 },
+            { atc: "R06AB04", name: "Clorfenamina", score: 1 },
+            { atc: "R06AD02", name: "Prometazina", score: 1 },
+            { atc: "R06AD03", name: "Tripolidina", score: 1 },
+            { atc: "R06AE05", name: "Meclizina", score: 1 },
+            { atc: "R06AE07", name: "Cetirizina", score: 1 },
+            { atc: "R06AX13", name: "Loratadina", score: 1 },
+            { atc: "R06AX17", name: "Buclizina", score: 1 },
+            { atc: "R06AX26", name: "Fexofenadina", score: 1 }
+        ];
+
+        // Função para preencher a tabela
+        function populateTable(data) {
+            const tbody = document.getElementById('medTableBody');
+            tbody.innerHTML = '';
+            data.forEach(med => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="p-3 border-b">${med.atc}</td>
+                    <td class="p-3 border-b">${med.name}</td>
+                    <td class="p-3 border-b">${med.score}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Função de pesquisa
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredMeds = medications.filter(med => 
+                med.name.toLowerCase().includes(searchTerm) ||
+                med.atc.toLowerCase().includes(searchTerm) ||
+                med.score.toString().includes(searchTerm)
+            );
+            populateTable(filteredMeds);
+        });
+
+        // Função de ordenação
+        let sortDirection = 1;
+        function sortTable(column) {
+            const key = ['atc', 'name', 'score'][column];
+            medications.sort((a, b) => {
+                const valA = a[key].toString().toLowerCase();
+                const valB = b[key].toString().toLowerCase();
+                return valA > valB ? sortDirection : valA < valB ? -sortDirection : 0;
+            });
+            sortDirection *= -1;
+            populateTable(medications);
+        }
+
+        // Inicializar tabela
+        populateTable(medications);
+    </script>
+</body>
+</html>
